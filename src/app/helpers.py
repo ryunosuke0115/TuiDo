@@ -84,8 +84,6 @@ class TaskDisplayHelper:
         details_text = "Task information:\n\n"
 
         details_text += f"  [b u]name[/b u]: {task.name}\n"
-        if task.description:
-            details_text += f"  [b u]description[/b u]: {task.description or 'None'}\n"
 
         if task.created_at:
             formatted_date = DateTimeHelper.convert_from_iso8601_jst(task.created_at)
@@ -94,6 +92,9 @@ class TaskDisplayHelper:
         if task.due_date:
             formatted_date = DateTimeHelper.convert_from_iso8601_jst(task.due_date)
             details_text += f"  [b u]due_date[/b u]: {formatted_date}\n"
+
+        if task.description:
+            details_text += f"  [b u]description[/b u]: {task.description or 'None'}\n"
 
         if tags:
             details_text += "\nTags:\n"
