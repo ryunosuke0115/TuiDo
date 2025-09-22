@@ -55,7 +55,7 @@ supabase db push
 ``` bash
 cp .env.sample .env
 ```
-2. `Project` -> `Project overview` から `Project URL`，`API Key` を取得する．
+2. `Project` -> `Project Settings` -> `Data API` から `Project URL` を，`Project` -> `Project Settings` -> `API Key` -> `API Keys` -> `Legacy API Keys` から `API Key` を取得する．
 3. .env の SUPABASE_URL と SUPABASE_KEY をそれぞれ自身の情報に書き換える．
 
 ### コマンドのパスを設定
