@@ -12,7 +12,7 @@
 
 プロジェクトディレクトリで下記のコマンドを実行し，必要な依存パッケージをインストールする．
 ``` bash
-pip install supabase python-dotenv textual
+pip install -r requirements.txt
 ```
 ``` bash
 brew install supabase/tap/supabase
