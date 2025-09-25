@@ -280,8 +280,8 @@ class TodoApp(App):
                     Label("Task Name (required):", classes="label"),
                     CustomInput(placeholder="Enter task name...", id="task-name"),
 
-                    Label("Deadline (YYYY-MM-DD-HH:MM, optional):", classes="label"),
-                    CustomInput(placeholder="e.g., 2024-12-31-23:59", id="due-date"),
+                    Label("Deadline (YYYY-MM-DD or YYYY-MM-DD-HH:MM, optional):", classes="label"),
+                    CustomInput(placeholder="e.g., 2024-12-31 or 2024-12-31-23:59", id="due-date"),
 
                     Label("Description:", classes="label"),
                     CustomTextArea(placeholder="Enter task description...", id="description"),
