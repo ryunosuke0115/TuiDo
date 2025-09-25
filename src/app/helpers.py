@@ -51,20 +51,28 @@ class DateTimeHelper:
 
     @staticmethod
     def convert_to_iso8601_jst(date_str: str) -> str:
-        try:
-            dt = datetime.strptime(date_str, "%Y-%m-%d-%H:%M")
-            dt_with_tz = dt.replace(second=0, microsecond=0, tzinfo=DateTimeHelper.JST_TZ)
-            return dt_with_tz.isoformat()
-        except Exception:
-            raise ValueError("Invalid date format. Use YYYY-MM-DD-HH:MM")
+        formats = ["%Y-%m-%d-%H:%M", "%Y-%m-%d"]
+        for fmt in formats:
+            try:
+                dt = datetime.strptime(date_str, fmt)
+                if fmt == "%Y-%m-%d":
+                    dt = dt.replace(hour=0, minute=0)
+                dt_with_tz = dt.replace(second=0, microsecond=0, tzinfo=DateTimeHelper.JST_TZ)
+                return dt_with_tz.isoformat()
+            except Exception:
+                continue
+        return "Invalid date format"
 
     @staticmethod
     def validate_date_format(date_str: str) -> bool:
-        try:
-            datetime.strptime(date_str, "%Y-%m-%d-%H:%M")
-            return True
-        except ValueError:
-            return False
+        formats = ["%Y-%m-%d-%H:%M", "%Y-%m-%d"]
+        for fmt in formats:
+            try:
+                datetime.strptime(date_str, fmt)
+                return True
+            except ValueError:
+                continue
+        return False
 
 
 class TaskDisplayHelper:
