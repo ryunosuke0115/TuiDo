@@ -571,7 +571,7 @@ def main():
     app = TodoApp()
     app.title = "Tuido"
     app.sub_title = "Todo Manager App"
-    app.run()
+    app.run(mouse=False)
 
 if __name__ == "__main__":
     main()
