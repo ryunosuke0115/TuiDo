@@ -36,14 +36,14 @@ supabase login
 
 2. 先ほど作成したプロジェクトと接続する．
 ``` bash
-supabase link --project-ref <your-project-ref>
+supabase link --project-ref <your-project-id>
 ```
 - your-project-ref は `Project` -> `Project Settings` から取得可能．
 
 3. マイグレーションファイルを作成する．
 ``` bash
 supabase migration new setup_table
-cp database/setup-table.sql supabase/migration/<new-migration.sql>
+cp database/setup-table.sql supabase/migrations/<new-migration.sql>
 ```
 4. ローカルにあるマイグレーションファイルをリモートに反映する．
 ``` bash
