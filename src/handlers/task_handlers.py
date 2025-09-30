@@ -41,12 +41,12 @@ class TaskHandler:
                 if not task:
                     return False
 
+            self.app.load_tasks()
             if self.app.previous_app_mode == "search_results":
                 search_term = self.app.previous_search_term
                 self.app.ui_manager.show_search_results(search_term)
             else:
                 self.app.ui_manager.clear_form()
-                self.app.load_tasks()
                 self.app.ui_manager.back_to_list()
             return True
 
@@ -60,6 +60,12 @@ class TaskHandler:
             success = self.app.controller.delete_task(self.app.pending_delete_task.id)
             if success:
                 self.app.load_tasks()
+                if self.app.previous_app_mode == "search_results":
+                    search_term = self.app.previous_search_term
+                    self.app.ui_manager.show_search_results(search_term)
+                    return
+                else:
+                    self.app.ui_manager.back_to_list()
 
             self.app.pending_delete_task = None
             self.app.ui_manager.back_to_list()
