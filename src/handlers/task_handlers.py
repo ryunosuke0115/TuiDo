@@ -57,19 +57,36 @@ class TaskHandler:
             return False
 
     def confirm_delete(self):
-        if self.app.pending_delete_task:
-            success = self.app.controller.delete_task(self.app.pending_delete_task.id)
-            if success:
-                if self.app.previous_app_mode == "search_results":
-                    self.app.controller.load_all_tasks()
-                    search_term = self.app.previous_search_term
-                    self.app.ui_manager.show_search_results(search_term)
-                    return
-                else:
-                    self.app.load_tasks()
-                    self.app.ui_manager.back_to_list()
+        if not self.app.pending_delete_task:
+            return
 
-            self.app.pending_delete_task = None
+        task_to_delete = self.app.pending_delete_task
+        success = self.app.controller.delete_task(task_to_delete.id)
+        self.app.pending_delete_task = None
+
+        if success:
+            if task_to_delete.is_completed:
+                if task_to_delete in self.app.controller.completed_tasks:
+                    self.app.controller.completed_tasks.remove(task_to_delete)
+            else:
+                if task_to_delete in self.app.controller.pending_tasks:
+                    self.app.controller.pending_tasks.remove(task_to_delete)
+
+            if self.app.previous_app_mode == "search_results":
+                if task_to_delete.is_completed:
+                    if task_to_delete in self.app.search_completed_results:
+                        self.app.search_completed_results.remove(task_to_delete)
+                else:
+                    if task_to_delete in self.app.search_pending_results:
+                        self.app.search_pending_results.remove(task_to_delete)
+
+            self.app.app_mode = self.app.previous_app_mode
+            self.app.ui_manager._hide_all_views()
+            self.app.query_one("#task-tabs").remove_class("hidden")
+            self.app.query_one("#task-details").remove_class("hidden")
+            self.app.ui_manager.load_task_lists()
+            self.app.ui_manager.update_help_text()
+        else:
             self.app.ui_manager.back_to_list()
 
     def cancel_delete(self):
