@@ -5,7 +5,7 @@ class KeyboardHandler:
         self.app = app
 
     def handle_global_keys(self, event: events.Key) -> bool:
-        if self.app.app_mode == "delete_confirm":
+        if self.app.app_mode == "delete":
             return self._handle_delete_confirm_keys(event)
         elif self.app.app_mode in ["create", "edit"]:
             try:
@@ -184,31 +184,45 @@ class KeyboardHandler:
         if not focused or not hasattr(focused, 'id'):
             return False
 
-        if focused.id == "search-input":
-            if event.key in ("down"):
-                self.app.query_one("#search-btn").focus()
+        field_navigation = {
+            "search-input": {
+                "down": "#search-btn",
+            }
+        }
+
+        button_navigation = {
+            "search-btn": {
+                "up": "#search-input",
+                "right": "#search-clear-btn",
+            },
+            "search-clear-btn": {
+                "up": "#search-input",
+                "left": "#search-btn",
+                "right": "#search-cancel-btn"
+            },
+            "search-cancel-btn": {
+                "up": "#search-input",
+                "left": "#search-clear-btn",
+            }
+        }
+
+        current_id = focused.id
+
+        if current_id in field_navigation:
+            nav = field_navigation[current_id]
+            if event.key in nav and nav[event.key]:
+                self.app.query_one(nav[event.key]).focus()
                 event.prevent_default()
                 event.stop()
                 return True
 
-        elif focused.id in ["search-btn", "search-cancel-btn"]:
-            if event.key in ("up"):
-                self.app.query_one("#search-input").focus()
+        elif current_id in button_navigation:
+            nav = button_navigation[current_id]
+            if event.key in nav and nav[event.key]:
+                self.app.query_one(nav[event.key]).focus()
                 event.prevent_default()
                 event.stop()
                 return True
-            elif event.key == "left":
-                if focused.id == "search-cancel-btn":
-                    self.app.query_one("#search-btn").focus()
-                    event.prevent_default()
-                    event.stop()
-                    return True
-            elif event.key == "right":
-                if focused.id == "search-btn":
-                    self.app.query_one("#search-cancel-btn").focus()
-                    event.prevent_default()
-                    event.stop()
-                    return True
 
         return False
 
@@ -217,16 +231,23 @@ class ActionHandler:
         self.app = app
 
     def handle_move_down(self):
-        if self.app.app_mode == "list":
+        if self.app.app_mode in ["list", "search_results"]:
+            if self.app.app_mode == "search_results":
+                pending_source = self.app.search_pending_results
+                completed_source = self.app.search_completed_results
+            else:
+                pending_source = self.app.controller.pending_tasks
+                completed_source = self.app.controller.completed_tasks
+
             if self.app.current_tab == "pending":
                 pending_list = self.app.query_one("#pending-tasks")
                 if (pending_list.index is not None and
-                    pending_list.index < len(self.app.controller.pending_tasks) - 1):
+                    pending_list.index < len(pending_source) - 1):
                     pending_list.index += 1
             elif self.app.current_tab == "completed":
                 completed_list = self.app.query_one("#completed-tasks")
                 if (completed_list.index is not None and
-                    completed_list.index < len(self.app.controller.completed_tasks) - 1):
+                    completed_list.index < len(completed_source) - 1):
                     completed_list.index += 1
             elif self.app.current_tab == "tags":
                 tags_list = self.app.query_one("#tags-list")
@@ -235,7 +256,7 @@ class ActionHandler:
                     tags_list.index += 1
 
     def handle_move_up(self):
-        if self.app.app_mode == "list":
+        if self.app.app_mode in ["list", "search_results"]:
             if self.app.current_tab == "pending":
                 pending_list = self.app.query_one("#pending-tasks")
                 if pending_list.index is not None and pending_list.index > 0:
@@ -250,48 +271,57 @@ class ActionHandler:
                     tags_list.index -= 1
 
     def handle_switch_tab_left(self):
-        if self.app.app_mode == "list":
+        if self.app.app_mode in ["list", "search_results"]:
+            if self.app.app_mode == "search_results":
+                pending_source = self.app.search_pending_results
+                completed_source = self.app.search_completed_results
+            else:
+                pending_source = self.app.controller.pending_tasks
+                completed_source = self.app.controller.completed_tasks
             tabbed_content = self.app.query_one("#task-tabs")
 
             if self.app.current_tab == "completed":
                 # DONE → TODO
                 tabbed_content.active = "pending-tab"
                 self.app.current_tab = "pending"
-                if self.app.controller.pending_tasks:
+                if pending_source:
                     pending_list = self.app.query_one("#pending-tasks")
                     if pending_list.index is None:
                         pending_list.index = 0
                     pending_list.focus()
-                    if 0 <= pending_list.index < len(self.app.controller.pending_tasks):
-                        self.app.show_task_details(self.app.controller.pending_tasks[pending_list.index])
+                    self.app.show_task_details(pending_source[pending_list.index])
             elif self.app.current_tab == "tags":
                 # TAGS → COMPLETED
                 tabbed_content.active = "completed-tab"
                 self.app.current_tab = "completed"
-                if self.app.controller.completed_tasks:
+                if completed_source:
                     completed_list = self.app.query_one("#completed-tasks")
                     if completed_list.index is None:
                         completed_list.index = 0
                     completed_list.focus()
-                    if 0 <= completed_list.index < len(self.app.controller.completed_tasks):
-                        self.app.show_task_details(self.app.controller.completed_tasks[completed_list.index])
+                    self.app.show_task_details(completed_source[completed_list.index])
 
     def handle_switch_tab_right(self):
-        if self.app.app_mode == "list":
+        if self.app.app_mode in ["list", "search_results"]:
+            if self.app.app_mode == "search_results":
+                pending_source = self.app.search_pending_results
+                completed_source = self.app.search_completed_results
+            else:
+                pending_source = self.app.controller.pending_tasks
+                completed_source = self.app.controller.completed_tasks
             tabbed_content = self.app.query_one("#task-tabs")
 
             if self.app.current_tab == "pending":
                 # TODO → DONE
                 tabbed_content.active = "completed-tab"
                 self.app.current_tab = "completed"
-                if self.app.controller.completed_tasks:
+                if completed_source:
                     completed_list = self.app.query_one("#completed-tasks")
                     if completed_list.index is None:
                         completed_list.index = 0
                     completed_list.focus()
-                    if 0 <= completed_list.index < len(self.app.controller.completed_tasks):
-                        self.app.show_task_details(self.app.controller.completed_tasks[completed_list.index])
-            elif self.app.current_tab == "completed":
+                    self.app.show_task_details(completed_source[completed_list.index])
+            elif self.app.current_tab == "completed" and self.app.app_mode != "search_results":
                 # COMPLETED → TAGS
                 tabbed_content.active = "tags-tab"
                 self.app.current_tab = "tags"
@@ -321,15 +351,15 @@ class ActionHandler:
 
             self.app.query_one("#task-details").add_class("hidden")
             self.app.query_one("#search-form").add_class("hidden")
-            self.app.query_one("#search-results-view").add_class("hidden")
             self.app.query_one("#edit-form").remove_class("hidden")
 
             task_name_input = self.app.query_one("#task-name")
             task_name_input.focus()
 
     def handle_edit_mode(self):
-        if self.app.app_mode != "list":
+        if self.app.app_mode not in ["list", "search_results"]:
             return
+        self.app.previous_app_mode = self.app.app_mode
 
         if self.app.current_tab == "tags":
             selected_tag = self.app.get_currently_selected_tag()
@@ -341,8 +371,9 @@ class ActionHandler:
                 self.app.edit_task(selected_task)
 
     def handle_complete_mode(self):
-        if self.app.app_mode != "list":
+        if self.app.app_mode not in ["list", "search_results"]:
             return
+        self.app.previous_app_mode = self.app.app_mode
 
         selected_task = self.app.get_currently_selected_task()
         if selected_task:
@@ -351,8 +382,9 @@ class ActionHandler:
                 self.app.load_tasks()
 
     def handle_delete_mode(self):
-        if self.app.app_mode != "list":
+        if self.app.app_mode not in ["list", "search_results"]:
             return
+        self.app.previous_app_mode = self.app.app_mode
 
         if self.app.current_tab == "tags":
             selected_tag = self.app.get_currently_selected_tag()
@@ -367,21 +399,9 @@ class ActionHandler:
         if self.app.app_mode != "list":
             return
 
-        self.app.query_one("#edit-form").add_class("hidden")
-        self.app.query_one("#tag-form").add_class("hidden")
-        self.app.query_one("#delete-confirm-view").add_class("hidden")
-        self.app.query_one("#delete-tag-confirm-view").add_class("hidden")
-
-        self.app.query_one("#search-form").remove_class("hidden")
-
         self.app.app_mode = "search_form"
-
-        search_input = self.app.query_one("#search-input")
-        search_input.focus()
-
+        self.app.show_search_form()
         self.app.ui_manager.update_help_text()
-
-        self.app.ui_manager.show_search_form()
 
     def handle_reload(self):
         self.app.load_tasks()

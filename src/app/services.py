@@ -50,11 +50,11 @@ class DatabaseService:
         return bool(response.data)
 
     @staticmethod
-    def search_tasks(search_term: str) -> List[Dict[str, Any]]:
+    def get_tasks_by_tag_name(search_term: str) -> List[Dict[str, Any]]:
         response = (
-            supabase.table("task_table")
+            supabase.table("task_tag_view")
             .select("*")
-            .or_(f"name.ilike.%{search_term}%,description.ilike.%{search_term}%")
+            .ilike("tag_name", search_term)
             .execute()
         )
         return response.data or []

@@ -2,6 +2,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Button, Header, Footer, Static, Label, ListView, TabbedContent, TabPane
 from textual import on, events
+from typing import List
 
 from app.models import Task, Tag
 from app.controllers import Controller
@@ -33,7 +34,7 @@ class TodoApp(App):
         ("i", "insert_mode", "Create"),
         ("e", "edit_mode", "Edit"),
         ("d", "delete_mode", "Delete"),
-        # ("f", "search_mode", "Search"), # to be added
+        ("f", "search_mode", "Search"),
         ("space", "complete_mode", "Toggle complete"),
     ]
 
@@ -77,17 +78,17 @@ class TodoApp(App):
         overflow: hidden;
     }
 
-    #search-results {
-        height: auto;
-        max-height: 80vh;
-        overflow: hidden;
-    }
-
     .label {
         margin-bottom: 0;
         margin-top: 0;
         color: $text;
         text-style: bold;
+    }
+
+    #left-title {
+        margin-bottom: 0;
+        margin-top: 0;
+        padding-bottom: 0;
     }
 
     #right-title {
@@ -183,21 +184,6 @@ class TodoApp(App):
         display: none;
     }
 
-    #search-modal {
-        align: center middle;
-        width: 60;
-        height: 15;
-        background: $background;
-        border: thick $primary;
-        padding: 2;
-    }
-
-    .modal-title {
-        text-align: center;
-        text-style: bold;
-        margin-bottom: 1;
-    }
-
     #search-form {
         margin-bottom: 1;
         padding: 1;
@@ -209,15 +195,17 @@ class TodoApp(App):
         margin-bottom: 1;
     }
 
-    #search-btn {
-        margin: 0 1;
-        min-width: 10;
-    }
+    # #search-btn {
+    #     margin: 0 1;
+    #     height: 1;
+    #     border: none;
+    # }
 
-    #search-results-view {
-        margin-bottom: 1;
-        padding: 1;
-    }
+    # #search-cancel-btn {
+    #     margin: 0 1;
+    #     height: 1;
+    #     border: none;
+    # }
     """
 
     def __init__(self):
@@ -236,6 +224,11 @@ class TodoApp(App):
         self.pending_delete_tag: Tag = None
         self.current_tab = "pending"
         self.app_mode = "list"
+        self.previous_app_mode = "list"
+
+        self.search_pending_results: List[Task] = []
+        self.search_completed_results: List[Task] = []
+        self.previous_search_term = ""
 
         self.theme = "nord"
 
@@ -246,10 +239,11 @@ class TodoApp(App):
             Container(
                 Vertical(
                     Label("Search Tasks:", classes="label"),
-                    CustomInput(placeholder="Enter search keyword...", id="search-input"),
+                    CustomTextArea(placeholder="Enter search keyword...", id="search-input"),
 
                     Horizontal(
                         Button("Search", variant="primary", id="search-btn"),
+                        Button("Clear", variant="default", id="search-clear-btn"),
                         Button("Cancel", variant="default", id="search-cancel-btn"),
                         classes="button-container"
                     ),
@@ -257,14 +251,7 @@ class TodoApp(App):
                     id="search-form",
                     classes="hidden"
                 ),
-
-                Vertical(
-                    Static("", id="search-results", classes="status"),
-                    Button("Back to Task List", variant="default", id="search-back-btn"),
-                    id="search-results-view",
-                    classes="hidden"
-                ),
-                Static("Task List", classes="label"),
+                Static("Task List", id="left-title", classes="label"),
                 TabbedContent(id="task-tabs"),
                 Static("", id="help-text", classes="help-text"),
                 id="left-panel"
@@ -358,7 +345,6 @@ class TodoApp(App):
         tabbed_content.add_pane(TabPane("TAGS", ListView(id="tags-list"), id="tags-tab"))
 
         self.call_after_refresh(self.load_tasks)
-        self.call_after_refresh(self.set_initial_focus)
         self.ui_manager.update_help_text()
 
     def load_tasks(self):
@@ -366,22 +352,22 @@ class TodoApp(App):
             return
         self.ui_manager.load_task_lists()
 
-    def set_initial_focus(self):
-        try:
-            pending_tasks_list = self.query_one("#pending-tasks", ListView)
-            pending_tasks_list.focus()
-        except:
-            pass
-
     def get_currently_selected_task(self) -> Task:
+        if self.app_mode == "search_results":
+            pending_source = self.search_pending_results
+            completed_source = self.search_completed_results
+        else:
+            pending_source = self.controller.pending_tasks
+            completed_source = self.controller.completed_tasks
+
         if self.current_tab == "pending":
             pending_list = self.query_one("#pending-tasks", ListView)
-            if pending_list.index is not None and 0 <= pending_list.index < len(self.controller.pending_tasks):
-                return self.controller.pending_tasks[pending_list.index]
+            if pending_list.index is not None and 0 <= pending_list.index < len(pending_source):
+                return pending_source[pending_list.index]
         elif self.current_tab == "completed":
             completed_list = self.query_one("#completed-tasks", ListView)
-            if completed_list.index is not None and 0 <= completed_list.index < len(self.controller.completed_tasks):
-                return self.controller.completed_tasks[completed_list.index]
+            if completed_list.index is not None and 0 <= completed_list.index < len(completed_source):
+                return completed_source[completed_list.index]
         return None
 
     def get_currently_selected_tag(self) -> Tag:
@@ -409,8 +395,8 @@ class TodoApp(App):
     def show_tag_delete_confirmation(self, tag: Tag):
         self.ui_manager.show_tag_delete_confirmation(tag)
 
-    def show_search_results(self, tasks: list, search_term: str):
-        self.ui_manager.show_search_results(tasks, search_term)
+    def show_search_form(self):
+        self.ui_manager.show_search_form()
 
     def back_to_list(self):
         self.ui_manager.back_to_list()
@@ -555,13 +541,13 @@ class TodoApp(App):
     def on_search_btn_pressed(self):
         self.task_handler.perform_search()
 
+    @on(Button.Pressed, "#search-clear-btn")
+    def on_search_clear_btn_pressed(self):
+        self.task_handler.clear_search_input()
+
     @on(Button.Pressed, "#search-cancel-btn")
     def on_search_cancel_btn_pressed(self):
         self.task_handler.cancel_search()
-
-    @on(Button.Pressed, "#search-back-btn")
-    def on_search_back_btn_pressed(self):
-        self.ui_manager.back_to_list()
 
     @on(Button.Pressed, "#back-btn")
     def on_back_btn_pressed(self):
@@ -569,7 +555,7 @@ class TodoApp(App):
 
 def main():
     app = TodoApp()
-    app.title = "Tuido"
+    app.title = "TuiDo"
     app.sub_title = "Todo Manager App"
     app.run(mouse=False)
 
