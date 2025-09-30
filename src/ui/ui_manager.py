@@ -1,5 +1,7 @@
 from app.models import Task, Tag
+from app.helpers import TaskSorter
 from typing import List
+from textual.widgets import Label, ListItem
 
 class UIManager:
     def __init__(self, app):
@@ -35,7 +37,7 @@ class UIManager:
             pass
 
     def show_delete_confirmation(self, task: Task):
-        self.app.app_mode = "delete_confirm"
+        self.app.app_mode = "delete"
         self.app.pending_delete_task = task
         self.update_help_text()
 
@@ -87,7 +89,7 @@ class UIManager:
         tag_name_input.focus()
 
     def show_tag_delete_confirmation(self, tag: Tag):
-        self.app.app_mode = "delete_confirm"
+        self.app.app_mode = "delete"
         self.app.pending_delete_tag = tag
         self.update_help_text()
 
@@ -110,41 +112,6 @@ class UIManager:
         self.app.query_one("#delete-tag-confirm-view").remove_class("hidden")
 
         self.app.query_one("#cancel-delete-tag-btn").focus()
-
-    def show_search_form(self):
-        self.app.app_mode = "search_form"
-        self.update_help_text()
-
-        right_title = self.app.query_one("#right-title")
-        right_title.update("Search Tasks")
-
-        self._hide_all_views()
-        self.app.query_one("#search-form").remove_class("hidden")
-
-        search_input = self.app.query_one("#search-input")
-        search_input.focus()
-
-    def show_search_results(self, tasks: List[Task], search_term: str):
-        self.app.app_mode = "search_results"
-        self.update_help_text()
-
-        right_title = self.app.query_one("#right-title")
-        right_title.update(f"Search Results: '{search_term}'")
-
-        results_text = ""
-        if tasks:
-            for task in tasks:
-                results_text += self.app.controller.get_task_details_text(task)
-                results_text += "\n" + "-" * 50 + "\n"
-        else:
-            results_text = "No tasks found matching your search criteria."
-
-        self._hide_all_views()
-        search_view = self.app.query_one("#search-results-view")
-        search_view.remove_class("hidden")
-
-        search_results = self.app.query_one("#search-results")
-        search_results.update(results_text)
 
     def show_edit_form(self, task: Task = None):
         if task:
@@ -176,6 +143,28 @@ class UIManager:
         task_name_input.focus()
 
     def back_to_list(self):
+        self.app.previous_search_term = ""
+        if self.app.app_mode in ["edit", "delete"]:
+            self.app.app_mode = self.app.previous_app_mode
+
+            self.app.current_editing_task = None
+            self.app.pending_delete_task = None
+
+            self._hide_all_views()
+            self.app.query_one("#task-tabs").remove_class("hidden")
+            self.app.query_one("#task-details").remove_class("hidden")
+            if self.app.previous_app_mode != "search_results":
+                left_title = self.app.query_one("#left-title")
+                left_title.update("Task List")
+            right_title = self.app.query_one("#right-title")
+            right_title.update("Details")
+
+            self.update_help_text()
+            self.app.query_one("#pending-tasks").focus()
+            return
+
+        self.app.search_pending_results = []
+        self.app.search_completed_results = []
         self.app.app_mode = "list"
         self.app.current_editing_task = None
         self.app.current_editing_tag = None
@@ -206,13 +195,17 @@ class UIManager:
                 completed_list.focus()
                 self.show_task_details(self.app.controller.completed_tasks[0])
 
+        self.load_task_lists()
         self.update_help_text()
 
+        left_title = self.app.query_one("#left-title")
+        left_title.update("Task List")
         right_title = self.app.query_one("#right-title")
         right_title.update("Details")
 
         self._hide_all_views()
         self.app.query_one("#task-details").remove_class("hidden")
+        self.app.query_one("#task-tabs").remove_class("hidden")
 
         selected_task = self.app.get_currently_selected_task()
         if selected_task:
@@ -259,14 +252,12 @@ class UIManager:
             tags_list.clear()
 
             for tag in self.app.controller.tags:
-                from textual.widgets import Label, ListItem
                 task_count = self.app.controller.count_tasks_with_tag(tag)
                 completed_task_count = self.app.controller.count_completed_tasks_with_tag(tag)
                 display_text = f"[b u]{tag.tag_name}[/b u] ({completed_task_count} / {task_count} tasks)"
                 tags_list.append(ListItem(Label(display_text)))
 
             if not self.app.controller.tags:
-                from textual.widgets import Label, ListItem
                 tags_list.append(ListItem(Label("No tags available")))
         except Exception as e:
             pass
@@ -279,12 +270,10 @@ class UIManager:
             completed_list.clear()
 
             for task in self.app.controller.pending_tasks:
-                from textual.widgets import Label, ListItem
                 task_text = self.app.controller.get_task_display_text(task)
                 pending_list.append(ListItem(Label(task_text)))
 
             for task in self.app.controller.completed_tasks:
-                from textual.widgets import Label, ListItem
                 task_text = self.app.controller.get_task_display_text(task)
                 completed_list.append(ListItem(Label(task_text)))
 
@@ -299,7 +288,6 @@ class UIManager:
                     tags_list.focus()
                     self.show_tag_details(self.app.controller.tags[0])
                 else:
-                    from textual.widgets import Label, ListItem
                     tags_list.append(ListItem(Label("No tags available")))
                     task_details = self.app.query_one("#task-details")
                     task_details.update("No tags available")
@@ -314,7 +302,6 @@ class UIManager:
                 completed_list.focus()
                 self.show_task_details(self.app.controller.completed_tasks[0])
             else:
-                from textual.widgets import Label, ListItem
                 pending_list.append(ListItem(Label("No pending tasks")))
                 completed_list.append(ListItem(Label("No completed tasks")))
                 task_details = self.app.query_one("#task-details")
@@ -325,8 +312,7 @@ class UIManager:
 
     def _hide_all_views(self):
         views_to_hide = [
-            "#task-details", "#edit-form", "#tag-form", "#search-form",
-            "#search-results-view", "#delete-confirm-view", "#delete-tag-confirm-view"
+            "#task-details", "#edit-form", "#tag-form", "#search-form","#delete-confirm-view","#delete-tag-confirm-view"
         ]
 
         for view_id in views_to_hide:
@@ -334,3 +320,76 @@ class UIManager:
                 self.app.query_one(view_id).add_class("hidden")
             except Exception:
                 pass
+
+    def show_search_form(self):
+        self.app.query_one("#edit-form").add_class("hidden")
+        self.app.query_one("#tag-form").add_class("hidden")
+        self.app.query_one("#delete-confirm-view").add_class("hidden")
+        self.app.query_one("#delete-tag-confirm-view").add_class("hidden")
+        self.app.query_one("#task-tabs").add_class("hidden")
+
+        search_form = self.app.query_one("#search-form")
+        search_form.remove_class("hidden")
+
+        search_input = self.app.query_one("#search-input")
+        self.app.call_after_refresh(lambda: self.app.set_focus(search_input))
+
+    def show_search_results(self, search_term: str):
+        self.app.previous_search_term = search_term
+        if not search_term:
+            self.app.task_handler.cancel_search()
+            return
+
+        try:
+            self.app.app_mode = "search_results"
+            self.update_help_text()
+
+            left_title = self.app.query_one("#left-title")
+            left_title.update(f"Results for Tag: '{search_term}'")
+
+            self._hide_all_views()
+            self.app.query_one("#task-tabs").remove_class("hidden")
+            self.app.query_one("#task-details").remove_class("hidden")
+
+            search_results_data = self.app.controller.search_tasks_by_tag_name(search_term)
+
+            search_pending_tasks = [t for t in search_results_data if not t.is_completed]
+            search_completed_tasks = [t for t in search_results_data if t.is_completed]
+
+            search_pending_tasks = TaskSorter.sort_tasks_by_priority(search_pending_tasks)
+            search_completed_tasks = TaskSorter.sort_tasks_by_priority(search_completed_tasks)
+
+            self.app.search_pending_results = search_pending_tasks
+            self.app.search_completed_results = search_completed_tasks
+
+            pending_list = self.app.query_one("#pending-tasks")
+            completed_list = self.app.query_one("#completed-tasks")
+            pending_list.clear()
+            completed_list.clear()
+
+            for task in search_pending_tasks:
+                task_text = self.app.controller.get_task_display_text(task)
+                pending_list.append(ListItem(Label(task_text)))
+
+            for task in search_completed_tasks:
+                task_text = self.app.controller.get_task_display_text(task)
+                completed_list.append(ListItem(Label(task_text)))
+
+            if search_pending_tasks:
+                pending_list.index = 0
+                self.app.current_tab = "pending"
+                pending_list.focus()
+                self.show_task_details(search_pending_tasks[0])
+            elif search_completed_tasks:
+                completed_list.index = 0
+                self.app.current_tab = "completed"
+                completed_list.focus()
+                self.show_task_details(search_completed_tasks[0])
+            else:
+                pending_list.append(ListItem(Label("No matching tasks found")))
+                completed_list.append(ListItem(Label("No matching tasks found")))
+                task_details = self.app.query_one("#task-details")
+                task_details.update(f"No tasks found with tag '{search_term}'")
+
+        except Exception as e:
+            pass

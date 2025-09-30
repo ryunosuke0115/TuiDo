@@ -24,18 +24,25 @@ class TabHandler:
                     self.app.ui_manager.show_tag_details(self.app.controller.tags[tags_list.index])
 
     def handle_task_highlighted(self, tab_type: str, index: int):
-        if self.app.app_mode != "list":
+        if self.app.app_mode not in ["list", "search_results"]:
             return
 
+        if self.app.app_mode == "search_results":
+            peding_source = self.app.search_pending_results
+            completed_source = self.app.search_completed_results
+        else:
+            peding_source = self.app.controller.pending_tasks
+            completed_source = self.app.controller.completed_tasks
+
         if tab_type == "pending":
-            if (index is not None and 0 <= index < len(self.app.controller.pending_tasks)
-                and self.app.controller.pending_tasks):
-                selected_task = self.app.controller.pending_tasks[index]
+            if (index is not None and 0 <= index < len(peding_source)
+                and peding_source):
+                selected_task = peding_source[index]
                 self.app.ui_manager.show_task_details(selected_task)
         elif tab_type == "completed":
-            if (index is not None and 0 <= index < len(self.app.controller.completed_tasks)
-                and self.app.controller.completed_tasks):
-                selected_task = self.app.controller.completed_tasks[index]
+            if (index is not None and 0 <= index < len(completed_source)
+                and completed_source):
+                selected_task = completed_source[index]
                 self.app.ui_manager.show_task_details(selected_task)
         elif tab_type == "tags":
             if (index is not None and 0 <= index < len(self.app.controller.tags)

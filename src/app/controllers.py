@@ -125,11 +125,12 @@ class Controller:
         except Exception as e:
             return None
 
-    def search_tasks(self, search_term: str) -> List[Task]:
+    def search_tasks_by_tag_name(self, search_term: str) -> List[Task]:
         try:
-            search_results_data = DatabaseService.search_tasks(search_term)
+            search_results_data = DatabaseService.get_tasks_by_tag_name(search_term)
+            search_results = [Task(id=task['task_id'], name=task['task_name'], description=task['task_description'], due_date=task['task_due_date'], is_completed=task['task_is_completed'], created_at=task['task_created_at']) for task in search_results_data]
 
-            return [Task(**task_data) for task_data in search_results_data]
+            return search_results
         except Exception as e:
             return []
 
