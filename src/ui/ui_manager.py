@@ -165,6 +165,8 @@ class UIManager:
 
         self.app.search_pending_results = []
         self.app.search_completed_results = []
+        if self.app.app_mode == "list":
+            return
         self.app.app_mode = "list"
         self.app.current_editing_task = None
         self.app.current_editing_tag = None
@@ -346,6 +348,8 @@ class UIManager:
 
             left_title = self.app.query_one("#left-title")
             left_title.update(f"Results for Tag: '{search_term}'")
+            right_title = self.app.query_one("#right-title")
+            right_title.update("Details")
 
             self._hide_all_views()
             self.app.query_one("#task-tabs").remove_class("hidden")
