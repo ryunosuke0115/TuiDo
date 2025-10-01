@@ -165,6 +165,8 @@ class UIManager:
 
         self.app.search_pending_results = []
         self.app.search_completed_results = []
+        if self.app.app_mode == "list":
+            return
         self.app.app_mode = "list"
         self.app.current_editing_task = None
         self.app.current_editing_tag = None
@@ -269,11 +271,18 @@ class UIManager:
             pending_list.clear()
             completed_list.clear()
 
-            for task in self.app.controller.pending_tasks:
+            if self.app.app_mode == "search_results":
+                pending_source = self.app.search_pending_results
+                completed_source = self.app.search_completed_results
+            else:
+                pending_source = self.app.controller.pending_tasks
+                completed_source = self.app.controller.completed_tasks
+
+            for task in pending_source:
                 task_text = self.app.controller.get_task_display_text(task)
                 pending_list.append(ListItem(Label(task_text)))
 
-            for task in self.app.controller.completed_tasks:
+            for task in completed_source:
                 task_text = self.app.controller.get_task_display_text(task)
                 completed_list.append(ListItem(Label(task_text)))
 
@@ -291,16 +300,16 @@ class UIManager:
                     tags_list.append(ListItem(Label("No tags available")))
                     task_details = self.app.query_one("#task-details")
                     task_details.update("No tags available")
-            elif self.app.controller.pending_tasks:
+            elif pending_source:
                 pending_list.index = 0
                 self.app.current_tab = "pending"
                 pending_list.focus()
-                self.show_task_details(self.app.controller.pending_tasks[0])
-            elif self.app.controller.completed_tasks:
+                self.show_task_details(pending_source[0])
+            elif completed_source:
                 completed_list.index = 0
                 self.app.current_tab = "completed"
                 completed_list.focus()
-                self.show_task_details(self.app.controller.completed_tasks[0])
+                self.show_task_details(completed_source[0])
             else:
                 pending_list.append(ListItem(Label("No pending tasks")))
                 completed_list.append(ListItem(Label("No completed tasks")))
@@ -346,6 +355,8 @@ class UIManager:
 
             left_title = self.app.query_one("#left-title")
             left_title.update(f"Results for Tag: '{search_term}'")
+            right_title = self.app.query_one("#right-title")
+            right_title.update("Details")
 
             self._hide_all_views()
             self.app.query_one("#task-tabs").remove_class("hidden")
