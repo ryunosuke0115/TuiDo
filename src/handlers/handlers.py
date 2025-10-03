@@ -380,6 +380,11 @@ class ActionHandler:
             updated_task = self.app.controller.toggle_task_completion(selected_task.id)
             if updated_task:
                 self.app.load_tasks()
+                if self.app.app_mode == "search_results":
+                    search_term = self.app.previous_search_term
+                    self.app.ui_manager.show_search_results(search_term)
+                elif self.app.app_mode == "list":
+                    return
 
     def handle_delete_mode(self):
         if self.app.app_mode not in ["list", "search_results"]:
