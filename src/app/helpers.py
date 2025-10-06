@@ -119,7 +119,7 @@ class TaskSorter:
         def sort_key(task):
             if not task.due_date:
                 # priority 3
-                return (3, 0)
+                return (3, task.id)
             else:
                 try:
                     due_datetime = datetime.fromisoformat(task.due_date.replace('Z', '+00:00'))
@@ -127,11 +127,11 @@ class TaskSorter:
 
                     if due_datetime < current_time:
                         # priority 2
-                        return (2, -due_datetime.timestamp())
+                        return (2, -due_datetime.timestamp(), task.id)
                     else:
                         # priority 1
-                        return (1, due_datetime.timestamp())
+                        return (1, due_datetime.timestamp(), task.id)
                 except Exception:
-                    return (3, 0)
+                    return (3, task.id)
 
         return sorted(tasks, key=sort_key)
