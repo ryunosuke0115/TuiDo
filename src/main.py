@@ -232,6 +232,8 @@ class TodoApp(App):
 
         self.theme = "nord"
 
+        self.controller.load_all_tasks()
+
     def compose(self) -> ComposeResult:
         yield Header()
         yield Horizontal(
@@ -344,7 +346,7 @@ class TodoApp(App):
         tabbed_content.add_pane(TabPane("DONE", ListView(id="completed-tasks"), id="completed-tab"))
         tabbed_content.add_pane(TabPane("TAGS", ListView(id="tags-list"), id="tags-tab"))
 
-        self.call_after_refresh(self.load_tasks)
+        self.call_after_refresh(self.ui_manager.load_task_lists)
         self.ui_manager.update_help_text()
 
     def load_tasks(self):
@@ -415,11 +417,6 @@ class TodoApp(App):
 
     def cancel_delete(self):
         self.task_handler.cancel_delete()
-
-    def load_tags(self):
-        if not self.controller.load_all_tags():
-            return
-        self.ui_manager.load_tag_list()
 
     def save_tag(self):
         self.tag_handler.save_tag()
@@ -554,9 +551,11 @@ class TodoApp(App):
         self.ui_manager.back_to_list()
 
 def main():
+    print("Loading ...")
     app = TodoApp()
     app.title = "TuiDo"
     app.sub_title = "Todo Manager App"
+    print("Running TuiDo ...")
     app.run(mouse=False)
 
 if __name__ == "__main__":
