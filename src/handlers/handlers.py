@@ -370,21 +370,29 @@ class ActionHandler:
             if selected_task:
                 self.app.edit_task(selected_task)
 
-    def handle_complete_mode(self):
+    def handle_toggle_or_search(self):
         if self.app.app_mode not in ["list", "search_results"]:
             return
-        self.app.previous_app_mode = self.app.app_mode
 
-        selected_task = self.app.get_currently_selected_task()
-        if selected_task:
-            updated_task = self.app.controller.toggle_task_completion(selected_task.id)
-            if updated_task:
-                self.app.load_tasks()
-                if self.app.app_mode == "search_results":
-                    search_term = self.app.previous_search_term
-                    self.app.ui_manager.show_search_results(search_term)
-                elif self.app.app_mode == "list":
-                    return
+        if self.app.current_tab in ["pending", "completed"]:
+            self.app.previous_app_mode = self.app.app_mode
+            selected_task = self.app.get_currently_selected_task()
+            if selected_task:
+                updated_task = self.app.controller.toggle_task_completion(selected_task.id)
+                if updated_task:
+                    self.app.load_tasks()
+                    if self.app.app_mode == "search_results":
+                        search_term = self.app.previous_search_term
+                        self.app.ui_manager.show_search_results(search_term)
+                    elif self.app.app_mode == "list":
+                        return
+        elif self.app.current_tab == "tags":
+            if self.app.app_mode == "list" and self.app.current_tab == "tags":
+                selected_tag = self.app.get_currently_selected_tag()
+                if selected_tag:
+                    self.app.ui_manager.show_search_results(selected_tag.tag_name)
+        else:
+            return
 
     def handle_delete_mode(self):
         if self.app.app_mode not in ["list", "search_results"]:

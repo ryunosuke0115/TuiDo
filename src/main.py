@@ -35,7 +35,7 @@ class TodoApp(App):
         ("e", "edit_mode", "Edit"),
         ("d", "delete_mode", "Delete"),
         ("f", "search_mode", "Search"),
-        ("space", "complete_mode", "Toggle complete"),
+        ("space", "toggle_or_search", "TASK: Toggle complete / TAG: Search by tag"),
     ]
 
     CSS = """
@@ -471,8 +471,8 @@ class TodoApp(App):
     def action_edit_mode(self):
         self.action_handler.handle_edit_mode()
 
-    def action_complete_mode(self):
-        self.action_handler.handle_complete_mode()
+    def action_toggle_or_search(self):
+        self.action_handler.handle_toggle_or_search()
 
     def action_delete_mode(self):
         self.action_handler.handle_delete_mode()
