@@ -1,0 +1,21 @@
+name: Keep Supabase Alive Weekly
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'
+  
+  workflow_dispatch:
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Access a Supabase table with curl
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          curl -X GET \
+            "$SUPABASE_URL/rest/v1/task_table?select=id&limit=1" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY"
