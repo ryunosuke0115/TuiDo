@@ -5,6 +5,7 @@ from typing import Optional
 class Task:
     id: int
     name: str
+    user_id: str
     description: Optional[str] = None
     due_date: Optional[str] = None
     is_completed: bool = False
@@ -18,5 +19,6 @@ class Task:
 @dataclass
 class Tag:
     id: int
-    tag_name: str
+    name: str
+    user_id: str
     description: Optional[str] = None

@@ -107,7 +107,7 @@ class TaskDisplayHelper:
         if tags:
             details_text += "\nTags:\n"
             for tag in tags:
-                details_text += f"  - {tag.tag_name}\n"
+                details_text += f"  - {tag.name}\n"
         else:
             details_text += "\nTags: No tags\n"
         return details_text

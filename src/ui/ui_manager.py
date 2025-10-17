@@ -65,11 +65,11 @@ class UIManager:
             self.app.app_mode = "edit"
             self.app.current_editing_tag = tag
 
-            self.app.query_one("#tag-name").value = tag.tag_name
+            self.app.query_one("#tag-name").value = tag.name
             self.app.query_one("#tag-description").text = ""
 
             right_title = self.app.query_one("#right-title")
-            right_title.update(f"Edit Tag: {tag.tag_name}")
+            right_title.update(f"Edit Tag: {tag.name}")
         else:
             self.app.app_mode = "create"
             self.app.current_editing_tag = None
@@ -97,13 +97,13 @@ class UIManager:
         right_title.update("DELETE TAG CONFIRMATION")
 
         delete_title = self.app.query_one("#delete-tag-confirm-title")
-        delete_title.update(f"Delete Tag: {tag.tag_name}")
+        delete_title.update(f"Delete Tag: {tag.name}")
 
         task_count = self.app.controller.count_tasks_with_tag(tag)
         delete_message = self.app.query_one("#delete-tag-confirm-message")
         delete_message.update(
             f"⚠️  WARNING: This action cannot be undone!\n\n"
-            f"Tag Name: {tag.tag_name}\n"
+            f"Tag Name: {tag.name}\n"
             f"Used by {task_count} task(s)\n\n"
             f"Are you sure you want to delete this tag?"
         )
@@ -228,7 +228,7 @@ class UIManager:
         try:
             task_count = self.app.controller.count_tasks_with_tag(tag)
             details_text = f"Tag Information:\n\n"
-            details_text += f"  [b u]name[/b u]: {tag.tag_name}\n"
+            details_text += f"  [b u]name[/b u]: {tag.name}\n"
             if tag.description:
                 details_text += f"  [b u]description[/b u]: {tag.description}\n\n"
             else:
@@ -256,7 +256,7 @@ class UIManager:
             for tag in self.app.controller.tags:
                 task_count = self.app.controller.count_tasks_with_tag(tag)
                 completed_task_count = self.app.controller.count_completed_tasks_with_tag(tag)
-                display_text = f"[b u]{tag.tag_name}[/b u] ({completed_task_count} / {task_count} tasks)"
+                display_text = f"[b u]{tag.name}[/b u] ({completed_task_count} / {task_count} tasks)"
                 tags_list.append(ListItem(Label(display_text)))
 
             if not self.app.controller.tags:
