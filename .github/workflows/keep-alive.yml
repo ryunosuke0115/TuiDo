@@ -13,7 +13,7 @@ jobs:
       - name: Access a Supabase table with curl
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           curl -X GET \
             "$SUPABASE_URL/rest/v1/task_table?select=id&limit=1" \
