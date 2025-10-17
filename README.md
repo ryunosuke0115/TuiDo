@@ -2,10 +2,7 @@
 
 ## Requirements
 - Python 3.11.7 ~
-- Homebrew 4.6.9 ~
-- Supabase CLI 2.39.2
 - Textual 6.10.0
-- python-dotenv 1.1.1
 
 ## Setup
 ### 依存パッケージのインストール
@@ -14,49 +11,6 @@
 ``` bash
 pip install -r requirements.txt
 ```
-``` bash
-brew install supabase/tap/supabase
-```
-
-### Supabase での新規プロジェクトを作成
-1. [Supabase](https://supabase.com/) にアクセスし，アカウントを作成する．
-2. `Start your project` -> `+ New organization` の順に押し，新規 organization を作成する．
-3. 作成した organization を選択し，`+ New Project` を押す．
-4. `Project name`，`Database password`，`Region` を入力し，新規プロジェクトを作成する．
-
-### 使用するテーブルの作成
-1. ターミナルから Supabase にログインする．
-``` bash
-supabase login
-```
-- これ以降の操作はパスワードが求められるため，以下のコマンドを実行することでパスワードの入力を省略できる．
-    ``` bash
-    export SUPABASE_DB_PASSWORD=<your-db-password>
-    ```
-
-2. 先ほど作成したプロジェクトと接続する．
-``` bash
-supabase link --project-ref <your-project-id>
-```
-- your-project-ref は `Project` -> `Project Settings` から取得可能．
-
-3. マイグレーションファイルを作成する．
-``` bash
-supabase migration new setup_table
-cp database/setup-table.sql supabase/migrations/<new-migration.sql>
-```
-4. ローカルにあるマイグレーションファイルをリモートに反映する．
-``` bash
-supabase db push
-```
-
-### 設定ファイルの作成
-1.  以下のコマンドを実行し，.env.sample を .env に変更する．
-``` bash
-cp .env.sample .env
-```
-2. `Project` -> `Project Settings` -> `Data API` から `Project URL` を，`Project` -> `Project Settings` -> `API Key` -> `API Keys` -> `Legacy API Keys` から `API Key` を取得する．
-3. .env の SUPABASE_URL と SUPABASE_KEY をそれぞれ自身の情報に書き換える．
 
 ### コマンドのパスを設定
 
@@ -76,6 +30,47 @@ ln -s ~/git/TuiDo/todo todo
 ```
 
 ## Usage
+### 初回起動時
+#### 新規ユーザ登録
+TuiDo のアカウントを所持していない場合，以下の手順で新しいアカウントを作成可能である．
+1. 起動時，`Do you have an account? (y/n): ` と聞かれるので `n` を入力し `Enter` を押す．
+``` bash
+Do you have an account? (y/n): n
+```
+
+2. 登録に使用するメールアドレスをパスワードを入力する．入力したパスワードは表示されない．
+``` bash
+Email: your-email@example.com
+Password (at least 6 characters):
+```
+
+3. アカウントが作成されると，入力したメールアドレスに認証メールが送信される．
+``` bash
+Sent a verification email to your email address.
+Please login again after verifying your email.
+```
+- アプリは一度終了する．メールを確認し，記載されたリンクをクリックしてメールアドレスの認証を完了させる必要がある．その後，再度 TuiDo を起動して `既存ユーザのログイン` に進む．
+
+
+#### 既存ユーザのログイン
+既に TuiDo のアカウントを所持している場合，以下の手順でログインできる．
+1. 起動時，`Do you have an account? (y/n): ` と聞かれるので `y` を入力し `Enter` を押す．
+``` bash
+Do you have an account? (y/n): y
+```
+
+2. 登録済みのメールアドレスとパスワードを入力する．
+``` bash
+Email: your-email@example.com
+Password (at least 6 characters):
+```
+
+3. 認証に成功すると次回以降の自動ログインのため，`credentials/user.json` にログイン情報が保存される．
+
+
+### 次回以降の起動時
+- 初回ログインに成功すると，次回以降の起動時には `credentials/user.json` に保存されたログイン情報を使用して自動的にログインされる．
+
 ### 表示について
 TuiDo を起動すると，左右に2つのテーブルが表示される．
 画面左側には，3つのタブが存在する．対応を以下に示す．
