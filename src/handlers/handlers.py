@@ -390,7 +390,7 @@ class ActionHandler:
             if self.app.app_mode == "list" and self.app.current_tab == "tags":
                 selected_tag = self.app.get_currently_selected_tag()
                 if selected_tag:
-                    self.app.ui_manager.show_search_results(selected_tag.tag_name)
+                    self.app.ui_manager.show_search_results(selected_tag.name)
         else:
             return
 

@@ -4,26 +4,29 @@ from .services import DatabaseService
 from .helpers import DateTimeHelper, TaskDisplayHelper, TaskSorter
 
 class Controller:
-    def __init__(self):
+    def __init__(self, supabase, user_id: str):
+        self.supabase = supabase
+        self.user_id = user_id
         self.pending_tasks: List[Task] = []
         self.completed_tasks: List[Task] = []
         self.tags: List[Tag] = []
         self.task_tags_cache: dict = {}
+        self.db_service = DatabaseService(supabase, user_id)
 
     def load_all_tasks(self) -> bool:
         try:
-            tasks_data = DatabaseService.get_all_tasks()
+            tasks_data = self.db_service.get_all_tasks()
 
             all_tasks = [Task(**task_data) for task_data in tasks_data]
 
             self.task_tags_cache = {}
             for task in all_tasks:
-                tags_data = DatabaseService.get_tags_for_task(task.id)
-                tags = [Tag(id=tag['tag_id'], tag_name=tag['tag_name']) for tag in tags_data]
+                tags_data = self.db_service.get_tags_for_task(task.id)
+                tags = [Tag(id=tag['tag_id'], name=tag['tag_name'], user_id=tag['tag_user_id']) for tag in tags_data]
                 self.task_tags_cache[task.id] = tags
 
-            all_tags_data = DatabaseService.get_all_tags()
-            self.all_tags = [Tag(id=tag['id'], tag_name=tag['name'], description=tag.get('description')) for tag in all_tags_data]
+            all_tags_data = self.db_service.get_all_tags()
+            self.all_tags = [Tag(**tag) for tag in all_tags_data]
             self.tags = self.all_tags
 
             self.pending_tasks = [task for task in all_tasks if not task.is_completed]
@@ -51,7 +54,7 @@ class Controller:
                 "is_completed": False
             }
 
-            created_task_data = DatabaseService.create_task(task_data)
+            created_task_data = self.db_service.create_task(task_data)
             if not created_task_data:
                 return None
 
@@ -80,18 +83,18 @@ class Controller:
             else:
                 updates['due_date'] = None
 
-            updated_task_data = DatabaseService.update_task(task_id, updates)
+            updated_task_data = self.db_service.update_task(task_id, updates)
             if not updated_task_data:
                 return None
 
             task = Task(**updated_task_data)
 
-            DatabaseService.remove_all_task_tags(task_id)
+            self.db_service.remove_all_task_tags(task_id)
             if tags:
                 self._add_tags_to_task(task_id, tags)
-                tags_data = DatabaseService.get_tags_for_task(task_id)
+                tags_data = self.db_service.get_tags_for_task(task_id)
                 self.task_tags_cache[task_id] = [
-                    Tag(id=tag['tag_id'], tag_name=tag['tag_name']) for tag in tags_data
+                    Tag(id=tag['tag_id'], name=tag['tag_name'], user_id=tag['tag_user_id']) for tag in tags_data
                 ]
             else:
                 self.task_tags_cache[task_id] = []
@@ -102,7 +105,7 @@ class Controller:
 
     def delete_task(self, task_id: int) -> bool:
         try:
-            success = DatabaseService.delete_task(task_id)
+            success = self.db_service.delete_task(task_id)
             if success and task_id in self.task_tags_cache:
                 del self.task_tags_cache[task_id]
             return success
@@ -118,7 +121,7 @@ class Controller:
             new_status = not task.is_completed
             updates = {"is_completed": new_status}
 
-            updated_task_data = DatabaseService.update_task(task_id, updates)
+            updated_task_data = self.db_service.update_task(task_id, updates)
             if updated_task_data:
                 return Task(**updated_task_data)
             return None
@@ -127,8 +130,8 @@ class Controller:
 
     def search_tasks_by_tag_name(self, search_term: str) -> List[Task]:
         try:
-            search_results_data = DatabaseService.get_tasks_by_tag_name(search_term)
-            search_results = [Task(id=task['task_id'], name=task['task_name'], description=task['task_description'], due_date=task['task_due_date'], is_completed=task['task_is_completed'], created_at=task['task_created_at']) for task in search_results_data]
+            search_results_data = self.db_service.get_tasks_by_tag_name(search_term)
+            search_results = [Task(id=task['task_id'], name=task['task_name'], description=task['task_description'], due_date=task['task_due_date'], is_completed=task['task_is_completed'], created_at=task['task_created_at'], user_id=task['task_user_id']) for task in search_results_data]
 
             return search_results
         except Exception as e:
@@ -137,21 +140,21 @@ class Controller:
     def _add_tags_to_task(self, task_id: int, tag_names: List[str]) -> bool:
         try:
             for tag_name in tag_names:
-                existing_tag_data = DatabaseService.get_tag_by_name(tag_name)
+                existing_tag_data = self.db_service.get_tag_by_name(tag_name)
 
                 if existing_tag_data:
                     tag_id = existing_tag_data['id']
                 else:
-                    new_tag_data = DatabaseService.create_tag(tag_name)
+                    new_tag_data = self.db_service.create_tag(tag_name)
                     if not new_tag_data:
                         continue
                     tag_id = new_tag_data['id']
 
-                DatabaseService.link_task_tag(task_id, tag_id)
+                self.db_service.link_task_tag(task_id, tag_id)
 
-            tags_data = DatabaseService.get_tags_for_task(task_id)
+            tags_data = self.db_service.get_tags_for_task(task_id)
             self.task_tags_cache[task_id] = [
-                Tag(id=tag['tag_id'], tag_name=tag['tag_name']) for tag in tags_data
+                Tag(id=tag['tag_id'], name=tag['tag_name'], user_id=tag['tag_user_id']) for tag in tags_data
             ]
 
             return True
@@ -178,21 +181,20 @@ class Controller:
 
     def create_new_tag(self, name: str, description: str = None) -> Optional[Tag]:
         try:
-            if any(tag.tag_name == name for tag in self.all_tags):
+            if any(tag.name == name for tag in self.all_tags):
                 raise ValueError(f"Tag '{name}' already exists")
 
             tag_data = {"name": name}
             if description:
                 tag_data["description"] = description
 
-            created_tag_data = DatabaseService.create_tag_with_description(tag_data)
+            created_tag_data = self.db_service.create_tag_with_description(tag_data)
             if not created_tag_data:
                 return None
 
             self.load_all_tasks()
 
-            created_tag = Tag(id=created_tag_data['id'], tag_name=created_tag_data['name'],
-            description=created_tag_data['description'])
+            created_tag = Tag(**created_tag_data)
             return created_tag
         except Exception as e:
             return None
@@ -206,21 +208,20 @@ class Controller:
             updates["name"] = name
             updates["description"] = description
 
-            updated_tag_data = DatabaseService.update_tag(tag.id, updates)
+            updated_tag_data = self.db_service.update_tag(tag.id, updates)
             if not updated_tag_data:
                 return None
 
             self.load_all_tasks()
 
-            updated_tag = Tag(id=updated_tag_data['id'], tag_name=updated_tag_data['name'],
-            description=updated_tag_data['description'])
+            updated_tag = Tag(**updated_tag_data)
             return updated_tag
         except Exception as e:
             return None
 
     def delete_tag(self, tag: Tag) -> bool:
         try:
-            success = DatabaseService.delete_tag(tag.id)
+            success = self.db_service.delete_tag(tag.id)
             if not success:
                 return False
 
@@ -251,7 +252,7 @@ class Controller:
 
     def prepare_task_for_editing(self, task: Task) -> dict:
         tags = self.get_tags_for_task(task.id)
-        tag_names = [tag.tag_name for tag in tags if tag]
+        tag_names = [tag.name for tag in tags if tag]
 
         return {
             'name': task.name,

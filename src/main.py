@@ -3,15 +3,29 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Button, Header, Footer, Static, Label, ListView, TabbedContent, TabPane
 from textual import on, events
 from typing import List
+import getpass
 
 from app.models import Task, Tag
 from app.controllers import Controller
+from app.sessions import AuthService
 from ui.widgets import CustomInput, CustomTextArea
 from handlers.handlers import KeyboardHandler, ActionHandler
 from ui.ui_manager import UIManager
 from handlers.task_handlers import TaskHandler
 from handlers.tag_handlers import TagHandler
 from handlers.tab_handlers import TabHandler
+
+from supabase import create_client, Client
+import json
+from pathlib import Path
+
+SUPABASE_CREDENTIALS_PATH = Path(__file__).resolve().parent.parent / "credentials" / "supabase.json"
+with open(SUPABASE_CREDENTIALS_PATH, "r") as f:
+    supabase_cred = json.load(f)
+
+url: str = supabase_cred["url"]
+key: str = supabase_cred["key"]
+supabase: Client = create_client(url, key)
 
 class TodoApp(App):
     BINDINGS = [
@@ -208,9 +222,9 @@ class TodoApp(App):
     # }
     """
 
-    def __init__(self):
+    def __init__(self, controller: Controller):
         super().__init__()
-        self.controller = Controller()
+        self.controller = controller
         self.keyboard_handler = KeyboardHandler(self)
         self.action_handler = ActionHandler(self)
         self.ui_manager = UIManager(self)
@@ -551,8 +565,49 @@ class TodoApp(App):
         self.ui_manager.back_to_list()
 
 def main():
+    auth_service = AuthService()
+    session = None
+    user_creds = auth_service.load_user_credentials()
+
+    if user_creds:
+        email = user_creds["email"]
+        password = user_creds["password"]
+        try:
+            session = auth_service.sign_in(supabase, email, password)
+            if not session.user:
+                print("Auto login failed. Please re-enter credentials.")
+                user_creds = None
+        except Exception as e:
+            print(f"Error in auto login: {e}")
+            user_creds = None
+
+    if not user_creds:
+        answer = input("Do you have an account? (y/n): ")
+        email = input("Email: ")
+
+        try:
+            if answer == "y":
+                password = getpass.getpass("Password: ")
+                session = auth_service.sign_in(supabase, email, password)
+            else:
+                password = getpass.getpass("Password (at least 6 characters): ")
+                session = auth_service.sign_up(supabase, email, password)
+                print("\nSent a verification email to your email address.")
+                print("Please login again after verifying your email.\n")
+                return
+
+            if session.user:
+                auth_service.save_user_credentials(email, password)
+                print("Login successful")
+            else:
+                print("Login failed. Please try again.")
+        except Exception as e:
+            print(f"Login error: {e}")
+            return
+
     print("Loading ...")
-    app = TodoApp()
+    controller = Controller(supabase=supabase, user_id=session.user.id)
+    app = TodoApp(controller=controller)
     app.title = "TuiDo"
     app.sub_title = "Todo Manager App"
     print("Running TuiDo ...")
