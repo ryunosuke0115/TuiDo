@@ -16,6 +16,6 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           curl -X GET \
-            "$SUPABASE_URL/rest/v1/task_table?select=id&limit=1" \
+            "$SUPABASE_URL/rest/v1/task_tag_join_table?select=id&limit=1" \
             -H "apikey: $SUPABASE_KEY" \
             -H "Authorization: Bearer $SUPABASE_KEY"
