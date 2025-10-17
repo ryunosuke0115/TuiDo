@@ -1,3 +1,4 @@
 .env
 supabase/
 __pycache__/
+credentials/
