@@ -2,3 +2,4 @@
 supabase/
 __pycache__/
 credentials/
+.python-version
