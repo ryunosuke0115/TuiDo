@@ -7,7 +7,7 @@ class DateTimeHelper:
     @staticmethod
     def calculate_time_remaining(due_date_str: str) -> str:
         if not due_date_str:
-            return "No deadline"
+            return "-"
 
         now = datetime.now(DateTimeHelper.JST_TZ)
 
@@ -22,21 +22,21 @@ class DateTimeHelper:
                 days = overdue.days
                 hours = overdue.seconds // 3600
                 if days > 0:
-                    return f"Overdue by {days}d"
+                    return f"{days}d over"
                 else:
-                    return f"Overdue by {hours}h"
+                    return f"{hours}h over"
             else:
                 total_hours = remaining.total_seconds() / 3600
                 days = remaining.days
 
                 if total_hours <= 24:
                     hours = int(total_hours)
-                    return f"{hours}h remaining"
+                    return f"({hours}h)"
                 elif days < 30:
-                    return f"{days}d remaining"
+                    return f"({days}d)"
                 else:
                     months = days // 30
-                    return f"{months}m remaining"
+                    return f"({months}m)"
         except Exception:
             return "Invalid date"
 
@@ -83,9 +83,9 @@ class TaskDisplayHelper:
         else:
             if task.due_date:
                 time_remaining = DateTimeHelper.calculate_time_remaining(task.due_date)
-                return f"[b u]{task.display_name}[/b u] ({time_remaining})"
+                return f"{time_remaining:>5} [b u]{task.display_name}[/b u]"
             else:
-                return f"[b u]{task.display_name}[/b u] (No deadline)"
+                return f"( - ) [b u]{task.display_name}[/b u]"
 
     @staticmethod
     def format_task_details(task: Task, tags: list) -> str:
