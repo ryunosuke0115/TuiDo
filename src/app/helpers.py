@@ -22,9 +22,9 @@ class DateTimeHelper:
                 days = overdue.days
                 hours = overdue.seconds // 3600
                 if days > 0:
-                    return f"{days}d over"
+                    return f"({days}d over)"
                 else:
-                    return f"{hours}h over"
+                    return f"({hours}h over)"
             else:
                 total_hours = remaining.total_seconds() / 3600
                 days = remaining.days
