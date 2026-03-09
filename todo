@@ -2,4 +2,4 @@
 cmdpath=$(readlink -f "$0" || echo "$0")
 cd "$(dirname "$cmdpath")"
 
-python3 src/main.py
+python3 src/main.py "$@"

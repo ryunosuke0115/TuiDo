@@ -17,6 +17,7 @@ from handlers.tab_handlers import TabHandler
 
 from supabase import create_client, Client
 import json
+import sys
 from pathlib import Path
 
 SUPABASE_CREDENTIALS_PATH = Path(__file__).resolve().parent.parent / "credentials" / "supabase.json"
@@ -222,7 +223,7 @@ class TodoApp(App):
     # }
     """
 
-    def __init__(self, controller: Controller):
+    def __init__(self, controller: Controller, initial_search: str = None):
         super().__init__()
         self.controller = controller
         self.keyboard_handler = KeyboardHandler(self)
@@ -243,6 +244,7 @@ class TodoApp(App):
         self.search_pending_results: List[Task] = []
         self.search_completed_results: List[Task] = []
         self.previous_search_term = ""
+        self.initial_search = initial_search
 
         self.theme = "nord"
 
@@ -360,7 +362,10 @@ class TodoApp(App):
         tabbed_content.add_pane(TabPane("DONE", ListView(id="completed-tasks"), id="completed-tab"))
         tabbed_content.add_pane(TabPane("TAGS", ListView(id="tags-list"), id="tags-tab"))
 
-        self.call_after_refresh(self.ui_manager.load_task_lists)
+        if self.initial_search:
+            self.call_after_refresh(lambda: self.ui_manager.show_search_results(self.initial_search))
+        else:
+            self.call_after_refresh(self.ui_manager.load_task_lists)
         self.ui_manager.update_help_text()
 
     def load_tasks(self):
@@ -568,6 +573,12 @@ def main():
     auth_service = AuthService()
     session = None
     user_creds = auth_service.load_user_credentials()
+    initial_search = sys.argv[1] if len(sys.argv) > 1 else None
+
+    if initial_search:
+        print(f"Running TuiDo with \"{initial_search}\" ...")
+    else:
+        print("Running TuiDo ...")
 
     if user_creds:
         email = user_creds["email"]
@@ -605,12 +616,11 @@ def main():
             print(f"Login error: {e}")
             return
 
-    print("Loading ...")
     controller = Controller(supabase=supabase, user_id=session.user.id)
-    app = TodoApp(controller=controller)
+    app = TodoApp(controller=controller, initial_search=initial_search)
+
     app.title = "TuiDo"
     app.sub_title = "Todo Manager App"
-    print("Running TuiDo ...")
     app.run(mouse=False)
 
 if __name__ == "__main__":
