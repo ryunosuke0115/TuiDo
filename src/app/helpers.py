@@ -1,8 +1,35 @@
+import re
 from datetime import datetime, timezone, timedelta
 from .models import Task
 
 class DateTimeHelper:
     JST_TZ = timezone(timedelta(hours=9))
+
+    @staticmethod
+    def _parse_flexible_datetime(date_str: str):
+        try:
+            base_date = datetime.strptime(date_str, "%Y-%m-%d")
+            return base_date.replace(hour=0, minute=0)
+        except ValueError:
+            pass
+
+        match = re.fullmatch(r"(\d{4}-\d{2}-\d{2})-(\d{2,}):(\d{2})", date_str)
+        if not match:
+            return None
+
+        date_part, hour_part, minute_part = match.groups()
+
+        try:
+            base_date = datetime.strptime(date_part, "%Y-%m-%d")
+            hour = int(hour_part)
+            minute = int(minute_part)
+        except ValueError:
+            return None
+
+        if minute < 0 or minute > 59:
+            return None
+
+        return base_date + timedelta(hours=hour, minutes=minute)
 
     @staticmethod
     def calculate_time_remaining(due_date_str: str) -> str:
@@ -51,28 +78,16 @@ class DateTimeHelper:
 
     @staticmethod
     def convert_to_iso8601_jst(date_str: str) -> str:
-        formats = ["%Y-%m-%d-%H:%M", "%Y-%m-%d"]
-        for fmt in formats:
-            try:
-                dt = datetime.strptime(date_str, fmt)
-                if fmt == "%Y-%m-%d":
-                    dt = dt.replace(hour=0, minute=0)
-                dt_with_tz = dt.replace(second=0, microsecond=0, tzinfo=DateTimeHelper.JST_TZ)
-                return dt_with_tz.isoformat()
-            except Exception:
-                continue
-        return "Invalid date format"
+        dt = DateTimeHelper._parse_flexible_datetime(date_str)
+        if not dt:
+            return "Invalid date format"
+
+        dt_with_tz = dt.replace(second=0, microsecond=0, tzinfo=DateTimeHelper.JST_TZ)
+        return dt_with_tz.isoformat()
 
     @staticmethod
     def validate_date_format(date_str: str) -> bool:
-        formats = ["%Y-%m-%d-%H:%M", "%Y-%m-%d"]
-        for fmt in formats:
-            try:
-                datetime.strptime(date_str, fmt)
-                return True
-            except ValueError:
-                continue
-        return False
+        return DateTimeHelper._parse_flexible_datetime(date_str) is not None
 
 
 class TaskDisplayHelper:
