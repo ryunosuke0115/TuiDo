@@ -1,21 +1,41 @@
-name: Keep Supabase Alive Weekly
+name: Keep Supabase Alive
 
 on:
   schedule:
-    - cron: '0 0 * * 1,4'
+    - cron: '15 0,8,16 * * *'
+
+  push:
+    branches: [master]
+    paths:
+      - .github/workflows/keep-alive.yml
 
   workflow_dispatch:
 
 jobs:
   keep-alive:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
-      - name: Access a Supabase table with curl
+      - name: Query the Supabase Data API
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          curl -X GET \
-            "$SUPABASE_URL/rest/v1/task_tag_join_table?select=task_id&limit=1" \
-            -H "apikey: $SUPABASE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_KEY"
+          : "${SUPABASE_URL:?Set the SUPABASE_URL Actions secret}"
+          : "${SUPABASE_KEY:?Set the SUPABASE_KEY Actions secret}"
+
+          response_file=$(mktemp)
+          trap 'rm -f "$response_file"' EXIT
+
+          status=$(curl --silent --show-error --retry 2 \
+            --connect-timeout 10 --max-time 20 \
+            --output "$response_file" --write-out '%{http_code}' \
+            --header "apikey: $SUPABASE_KEY" \
+            --url "${SUPABASE_URL%/}/rest/v1/task_tag_join_table?select=task_id&limit=1")
+
+          printf 'Supabase Data API returned HTTP %s\n' "$status" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [[ "$status" != 2?? ]]; then
+            printf '::error::Supabase Data API returned HTTP %s\n' "$status"
+            cat "$response_file"
+            exit 1
+          fi
